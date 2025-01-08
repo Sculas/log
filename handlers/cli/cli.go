@@ -40,14 +40,14 @@ var Strings = [...]string{
 }
 
 type Handler struct {
-	mu        sync.Mutex
-	errformat eris.StringFormat
-	Writer    io.Writer
-	Padding   int
+	mu      sync.Mutex
+	errfmt  eris.StringFormat
+	Writer  io.Writer
+	Padding int
 }
 
 func New(w io.Writer, useColors bool) *Handler {
-	errformat := eris.NewDefaultStringFormat(eris.FormatOptions{
+	errfmt := eris.NewDefaultStringFormat(eris.FormatOptions{
 		WithTrace:    true, // enable stack trace
 		InvertTrace:  true, // invert stack trace (top to bottom)
 		WithExternal: true, // format external errors not from eris
@@ -55,11 +55,11 @@ func New(w io.Writer, useColors bool) *Handler {
 
 	if f, ok := w.(*os.File); ok {
 		if useColors {
-			return &Handler{errformat: errformat, Writer: colorable.NewColorable(f), Padding: 2}
+			return &Handler{errfmt: errfmt, Writer: colorable.NewColorable(f), Padding: 2}
 		}
 	}
 
-	return &Handler{errformat: errformat, Writer: colorable.NewNonColorable(w), Padding: 2}
+	return &Handler{errfmt: errfmt, Writer: colorable.NewNonColorable(w), Padding: 2}
 }
 
 // HandleLog implements log.Handler.
@@ -102,16 +102,18 @@ func (h *Handler) HandleLog(e *log.Entry) error {
 	// Write the new line (as we haven't done that yet).
 	_, _ = fmt.Fprintln(h.Writer)
 
-	// Write the error if there is one.
-	for _, field := range fields {
-		if field.Key == "error" {
-			if err, ok := field.Value.(error); ok {
-				_, _ = fmt.Fprintf(h.Writer, "\n%s\n%+v\n\n",
-					colorError.Render("Stacktrace:"),
-					eris.ToCustomString(err, h.errformat))
-			}
+	// Write the error if there is one, but only in debug mode.
+	if e.Level == log.DebugLevel {
+		for _, field := range fields {
+			if field.Key == "error" {
+				if err, ok := field.Value.(error); ok {
+					_, _ = fmt.Fprintf(h.Writer, "\n%s\n%+v\n\n",
+						colorError.Render("Stacktrace:"),
+						eris.ToCustomString(err, h.errfmt))
+				}
 
-			break
+				break
+			}
 		}
 	}
 
