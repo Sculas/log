@@ -103,7 +103,7 @@ func (h *Handler) HandleLog(e *log.Entry) error {
 	_, _ = fmt.Fprintln(h.Writer)
 
 	// Write the error if there is one, but only in debug mode.
-	if e.Level == log.DebugLevel {
+	if e.Logger.Level == log.DebugLevel {
 		for _, field := range fields {
 			if field.Key == "error" {
 				if err, ok := field.Value.(error); ok {
